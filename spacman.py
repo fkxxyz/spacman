@@ -55,7 +55,7 @@ def get_system_pkgs():
             need = needstr.split('=')[0].split('>')[0].split('<')[0]
 
             if len(needstr) == len(need):
-                if need in pkg_provider_dict:
+                if need not in pkg_item_info_dict and need in pkg_provider_dict:
                     for v in pkg_provider_dict[need]:
                         pkg_item_info_dict[pkg][2][i] = pkg_provider_dict[need][v]
                         break
@@ -90,7 +90,7 @@ def get_system_pkgs():
     for pkg in pkg_item_info_dict:
         for q_pkg in pkg_item_info_dict[pkg][2]:
             assert(q_pkg in pkg_item_info_dict)
-            
+    
     return pkg_item_info_dict
 
 
