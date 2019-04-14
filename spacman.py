@@ -3,6 +3,7 @@
 import os
 import ctypes
 import sys
+import argparse
 
 
 conf_file = os.path.expanduser('~') + '/.config/spacman.conf'
@@ -124,6 +125,11 @@ def get_conf_pkg_set():
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="test!!")
+    parser.add_argument('pkg', help='qweffqwef', nargs='?')
+    args = parser.parse_args()
+    print(args)
+    
     if os.path.exists(conf_file):
         system_pkg_info = get_system_pkgs()
         pkg_needs_config = get_conf_pkg_set()
