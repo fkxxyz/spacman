@@ -152,7 +152,7 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Super package management for archlinux.")
     parser.add_argument('--config', '-c', help='Specify the package list file.', default=default_conf_file)
-    parser.add_argument('--pacman', '-p', help='Specify the package management.', default='pacman')
+    parser.add_argument('--pacman', '-p', help='Specify the package management.', default='sudo pacman')
     parser.add_argument('--apply', '-a', help='Call package management to apply to system.', action='store_const', const=True, default=False)
     parser.add_argument('--query', '-q', help='config file', default=default_conf_file)
     args = parser.parse_args()
