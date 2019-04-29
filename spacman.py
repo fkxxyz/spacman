@@ -114,13 +114,13 @@ def get_pkglist_recursive_needs(system_pkg_info, pkglist):
     return (result, query_invalid_result)
 
 
-def get_conf_pkg_set(config):
+def get_conf_set(config):
     lines = open(config).readlines()
     s_set = set()
     for line in lines:
-        pkg = line.split('#', 1)[0].strip()
-        if len(pkg) != 0:
-            s_set.add(pkg)
+        elem = line.split('#', 1)[0].strip()
+        if len(elem) != 0:
+            s_set.add(elem)
     return s_set
 
 
@@ -129,10 +129,17 @@ def main(args):
         err('No such file: ' + args.config)
         return 1
     
+    # Read configure file
+    pkg_needs_config = get_conf_set(args.config)
+    if args.query:
+        print('\n'.join(pkg_needs_config))
+        return
+    
+    # Read all packages of local system.
     system_pkg_info = get_system_pkgs()
-    pkg_needs_config = get_conf_pkg_set(args.config)
-    (pkg_needs_in_system, pkg_needs_install) = get_pkglist_recursive_needs(system_pkg_info, pkg_needs_config)
     pkg_in_system = {pkg for pkg in system_pkg_info}
+    
+    (pkg_needs_in_system, pkg_needs_install) = get_pkglist_recursive_needs(system_pkg_info, pkg_needs_config)
     pkg_noneeds_in_system = pkg_in_system - pkg_needs_in_system
     
     if args.apply:
@@ -140,21 +147,21 @@ def main(args):
             os.system(args.pacman + ' -R ' + ' '.join(pkg_noneeds_in_system))
         if len(pkg_needs_install) > 0:
             os.system(args.pacman + ' -S ' + ' '.join(pkg_needs_install))
-    else:
-        print('Following ' + str(len(pkg_noneeds_in_system)) + ' packages need to be uninstalled:')
-        print('\033[1;33m' + ' '.join(pkg_noneeds_in_system) + '\033[0m')
-        print()
-        print('Following ' + str(len(pkg_needs_install)) + ' packages need to be installed:')
-        print('\033[1;32m' + ' '.join(pkg_needs_install) + '\033[0m')
-
+        return
     
+    print('Following ' + str(len(pkg_noneeds_in_system)) + ' packages need to be uninstalled:')
+    print('\033[1;33m' + ' '.join(pkg_noneeds_in_system) + '\033[0m')
+    print()
+    print('Following ' + str(len(pkg_needs_install)) + ' packages need to be installed:')
+    print('\033[1;32m' + ' '.join(pkg_needs_install) + '\033[0m')
+
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Super package management for archlinux.")
+    parser = argparse.ArgumentParser(description="Super package manager for archlinux.")
     parser.add_argument('--config', '-c', help='Specify the package list file.', default=default_conf_file)
     parser.add_argument('--pacman', '-p', help='Specify the package management.', default='sudo pacman')
-    parser.add_argument('--apply', '-a', help='Call package management to apply to system.', action='store_const', const=True, default=False)
-    parser.add_argument('--query', '-q', help='config file', default=default_conf_file)
+    parser.add_argument('--apply', '-a', help='Call package manager to apply to system.', action='store_const', const=True, default=False)
+    parser.add_argument('--query', '-q', help='Query packages from the configure file.', action='store_const', const=True, default=False)
     args = parser.parse_args()
     
     exit(main(args))
