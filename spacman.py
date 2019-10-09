@@ -66,7 +66,7 @@ def get_system_pkgs():
                     if len(need) != 1:
                         break;
                 if len(need) == 1:
-                    err(':: ' + pkg + ' : The dependency ' + needstr + " can't be reconize.")
+                    err(':: \033[1;33m' + pkg + '\033[0m : The dependency ' + needstr + " can't be reconize.")
                     continue
                 
                 if op == '=':
@@ -82,15 +82,21 @@ def get_system_pkgs():
                             ver = None
                             break
                     if ver is not None:
-                        err(':: ' + pkg + ' : The dependency ' + needstr + " can't be satisfied.")
+                        err(':: \033[1;33m' + pkg + '\033[0m : The dependency ' + needstr + " can't be satisfied.")
                 else:
-                    err(':: ' + pkg + ' : The dependency ' + needstr + " can't be reconize.")
+                    err(':: \033[1;33m' + pkg + '\033[0m : The dependency ' + needstr + " can't be reconize.")
                 continue
 
     # check
+    missing_package = []
     for pkg in pkg_item_info_dict:
         for q_pkg in pkg_item_info_dict[pkg][2]:
-            assert(q_pkg in pkg_item_info_dict)
+            if q_pkg not in pkg_item_info_dict:
+                missing_package.append([q_pkg, pkg])
+    if len(missing_package) > 0:
+        for mdep in missing_package:
+            err(':: \033[1;33m' + mdep[1] + '\033[0m : The dependency \033[1;33m' + mdep[0] + "\033[0m can't be satisfied. Missing dependency package. Please install it and try again.")
+        exit(0)
     
     return pkg_item_info_dict
 
