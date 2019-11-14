@@ -73,15 +73,19 @@ def get_system_pkgs():
                     op = '=='
                 
                 if need[0] in pkg_item_info_dict:
+                    # Found dependency as a real package.
                     pkg_item_info_dict[pkg][2][i] = need[0]
                 elif need[0] in pkg_provider_dict:
+                    # Search for every provider.
+                    require_optional_pkgs = []
                     for ver in pkg_provider_dict[need[0]]:
                         cmpr = eval('vercmp(ver, need[1]) ' + op + ' 0')
                         if cmpr:
                             pkg_item_info_dict[pkg][2][i] = pkg_provider_dict[need[0]][ver]
-                            ver = None
+                            require_optional_pkgs.append(ver)
                             break
-                    if ver is not None:
+                    #print(pkg, need[0], require_optional_pkgs)
+                    if len(require_optional_pkgs) == 0:
                         err(':: \033[1;33m' + pkg + '\033[0m : The dependency ' + needstr + " can't be satisfied.")
                 else:
                     err(':: \033[1;33m' + pkg + '\033[0m : The dependency ' + needstr + " can't be reconize.")
@@ -164,10 +168,11 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Super package manager for archlinux.")
-    parser.add_argument('--config', '-c', help='Specify the package list file.', default=default_conf_file)
-    parser.add_argument('--pacman', '-p', help='Specify the package management.', default='sudo pacman')
+    parser.add_argument('--config', '-c', help='Specify the package list file. The default is ' + default_conf_file, default=default_conf_file)
+    parser.add_argument('--pacman', '-p', help='Specify the package management. The default is pacman', default='sudo pacman')
     parser.add_argument('--apply', '-a', help='Call package manager to apply to system.', action='store_const', const=True, default=False)
     parser.add_argument('--query', '-q', help='Query packages from the configure file.', action='store_const', const=True, default=False)
     args = parser.parse_args()
     
     exit(main(args))
+
