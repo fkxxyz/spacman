@@ -8,11 +8,17 @@ import argparse
 import copy
 
 
-default_conf_file = os.path.expanduser('~') + '/.config/spacman/default.conf'
-# default_conf_file = '/etc/spacman/default.conf'
+default_conf_path = os.path.expanduser('~') + '/.config/spacman'
+# default_conf_path = '/etc/spacman'
+
+default_conf_file = default_conf_path.rstrip('/') + '/default.conf'
 
 
 class packageManager:
+    def get_pkg_manager_type(self):
+        # 包管理器类型字符串
+        assert 0
+        
     def get_default_pkg_manager(self):
         # 默认包管理器
         assert 0
@@ -48,6 +54,9 @@ class packageManager:
 
 
 class pmDEB(packageManager):
+    def get_pkg_manager_type(self):
+        return 'deb'
+        
     def get_default_pkg_manager(self):
         assert 0
 
@@ -65,13 +74,16 @@ class pmDEB(packageManager):
 
 
 class pmRPM(packageManager):
+    def get_pkg_manager_type(self):
+        return 'rpm'
+        
     def get_default_pkg_manager(self):
         assert 0
 
     def install(self, pkg_manager, pkg_list):
         assert 0
 
-    def uninstall(self, pkg_list):
+    def uninstall(self, pkg_manager, pkg_list):
         assert 0
 
     def readAllPkgInfo(self):
@@ -81,7 +93,50 @@ class pmRPM(packageManager):
         assert 0
 
 
+class pmPIP(packageManager):
+    def get_pkg_manager_type(self):
+        return 'pip'
+        
+    def get_default_pkg_manager(self):
+        return 'pip'
+
+    def install(self, pkg_manager, pkg_list):
+        os.system(pkg_manager + ' install ' + ' '.join(pkg_list))
+
+    def uninstall(self, pkg_manager, pkg_list):
+        os.system(pkg_manager + ' uninstall -y ' + ' '.join(pkg_list))
+
+    def readAllPkgInfo(self):
+        """
+            获取系统中所有的包信息
+            返回的结果形如
+              {"包名":["依赖", ...],...}
+        """
+        def conv_pkg_info(pkg_info_str):
+            req_list = pkg_info_str[8][1].lower().split(', ')
+            return [pkg_info_str[0][1].lower(), [] if req_list[0]=='' else req_list]
+        
+        pkg_ver_str_list = os.popen('LANG=C pip list --format freeze').read().strip().split('\n')
+        pkg_name_list = [s.split('==')[0] for s in pkg_ver_str_list]
+        pkg_info_list = os.popen('LANG=C pip show ' + ' '.join(pkg_name_list)).read().strip().split('\n---\n')
+        
+        result = dict(map(
+            lambda i:conv_pkg_info(list(map(
+                lambda l:list(map(
+                    lambda ll:ll.strip(),
+                    l.split(': '))),
+                i.split('\n')))),
+            pkg_info_list))
+        return result
+        
+    def toDepenndsListDict(self, infoDict):
+        return {name: [{dep} for dep in infoDict[name]] for name in infoDict}
+
+
 class pmPACMAN(packageManager):
+    def get_pkg_manager_type(self):
+        return 'pacman'
+        
     def get_default_pkg_manager(self):
         return 'sudo pacman'
 
@@ -92,6 +147,11 @@ class pmPACMAN(packageManager):
         os.system(pkg_manager + ' -R ' + ' '.join(pkg_list))
 
     def readAllPkgInfo(self):
+        """
+            获取系统中所有的包信息
+            返回的结果形如
+              {"包名":["版本号", ["提供",...], ["依赖", ...]],...}
+        """
         def conv_pkg_info(pkg_info_str):
             return [pkg_info_str[0][1], [pkg_info_str[1][1], pkg_info_str[7][1].split(), pkg_info_str[8][1].split()]]
         
@@ -184,8 +244,18 @@ class pmPACMAN(packageManager):
         return result
 
 class packageManagerFactory:
-    def get(self):
+    pm_dict = {
+        'pacman': pmPACMAN,
+        'deb': pmDEB,
+        'rpm': pmRPM,
+        'pip': pmPIP
+    }
+
+    def get(self, sp_type = None):
         # 返回包管理器类对象
+        
+        if sp_type is not None:
+            return packageManagerFactory.pm_dict[sp_type]()
         
         def has(command):
             # 判断系统中是否有这条命令
@@ -307,17 +377,22 @@ class spacmanController:
 
         # 检查配置文件
         if not os.path.exists(args.config):
-            sys.stderr.write('No such file: ' + args.config + '\n')
-            return 1
+            t_conf_file = default_conf_path.rstrip('/') + '/' + args.config + '.conf'
+            if os.path.exists(t_conf_file):
+                args.config = t_conf_file
+            else:
+                sys.stderr.write('No such file: ' + args.config + '\n')
+                return 1
 
         # 读取配置文件
+        print('Using configure file: \033[1;36m' + args.config + '\033[0m')
         pkg_in_config = spacmanController().get_conf_set(args.config)
         if args.query:
             print('\n'.join(pkg_in_config))
             return 0
 
         # 判断系统的包管理器类型
-        PM = packageManagerFactory().get()
+        PM = packageManagerFactory().get(args.type)
         if PM is None:
             sys.stderr.write('Cannot get the type of the package manager.\n')
             return 1
@@ -325,6 +400,9 @@ class spacmanController:
         # 设置包管理器参数
         if args.pacman is None:
             args.pacman = PM.get_default_pkg_manager()
+
+        # 打印信息
+        print('Package manager type: \033[1;36m' + PM.get_pkg_manager_type() + '\033[0m')
 
         # 读取系统里所有的包名及其信息
         system_pkg_info = PM.readAllPkgInfo()
@@ -338,6 +416,10 @@ class spacmanController:
             else:
                 if args.apply:
                     PM.install(args.pacman, pkg_need_install)
+                    
+                    # 重新读取系统里所有的包名及其信息
+                    system_pkg_info = PM.readAllPkgInfo()
+                    pkg_in_system = set(system_pkg_info)
                 else:
                     output('Following %d packages need to be installed:', '1;32', pkg_need_install)
                     return 0
@@ -357,17 +439,21 @@ class spacmanController:
         # 求出多余的包
         pkg_noneeds_set = pkg_in_system - pkg_min_set
 
-        if args.apply:
-            # 直接卸载的这些包
-            PM.uninstall(args.pacman, pkg_noneeds_set)
+        if len(pkg_noneeds_set) > 0:
+            if args.apply:
+                # 直接卸载的这些包
+                PM.uninstall(args.pacman, pkg_noneeds_set)
+            else:
+                # 直接打印需要卸载的包
+                output('Following %d packages need to be uninstalled:', '1;33', pkg_noneeds_set)
         else:
-            # 直接打印需要卸载的包
-            output('Following %d packages need to be uninstalled:', '1;33', pkg_noneeds_set)
+            print('\033[1;32mNo unnecessary packages.\033[0m')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Super package manager for archlinux.")
     parser.add_argument('--config', '-c', help='Specify the package list file. The default is ' + default_conf_file, default=default_conf_file)
     parser.add_argument('--pacman', '-p', help='Specify the package management.', default=None)
+    parser.add_argument('--type', '-t', help='Specify the package management type.', choices=set(packageManagerFactory.pm_dict), default=None)
     parser.add_argument('--ignore', '-i', help='Ignored packages in configure file that were not installed.', action='store_const', const=True, default=False)
     parser.add_argument('--apply', '-a', help='Call package manager to apply to system.', action='store_const', const=True, default=False)
     parser.add_argument('--query', '-q', help='Query packages from the configure file.', action='store_const', const=True, default=False)
