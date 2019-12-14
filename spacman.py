@@ -362,7 +362,7 @@ class spacmanController:
             PM.uninstall(args.pacman, pkg_noneeds_set)
         else:
             # 直接打印需要卸载的包
-            output('Following %d packages need to be uninstalled:', '1;33m', pkg_noneeds_set)
+            output('Following %d packages need to be uninstalled:', '1;33', pkg_noneeds_set)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Super package manager for archlinux.")
