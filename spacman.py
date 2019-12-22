@@ -349,7 +349,7 @@ class coreCalc:
                                 break
                         else:
                             or_result.append(deps)
-            return result, top_c_pkg
+            return result, or_result
 
         return result
 
@@ -431,10 +431,12 @@ class spacmanController:
         pkg_min_set = coreCalc().solveMin(pkgs_depends_dict, pkg_in_config)
 
         # 如果核心运算存在多个解
-        if type(pkg_min_set) == list:
-            for pkgs in pkg_min_set:
-                output("There are %d choices, please choose one.", '1;45', pkgs)
+        if type(pkg_min_set) == tuple:
+            for pkgs in pkg_min_set[1]:
+                output("There are %d choices, please choose one.", '1;35', pkgs)
             return 0
+
+        assert type(pkg_min_set) == set
 
         # 求出多余的包
         pkg_noneeds_set = pkg_in_system - pkg_min_set
