@@ -420,6 +420,12 @@ class spacmanController:
                     # 重新读取系统里所有的包名及其信息
                     system_pkg_info = PM.readAllPkgInfo()
                     pkg_in_system = set(system_pkg_info)
+                    
+                    # 再次判断设置文件中是否有某个包未装
+                    pkg_need_install = pkg_in_config - pkg_in_system
+                    if pkg_need_install != set():
+                        output('Following %d packages failed to install:', '1;32', pkg_need_install)
+                        return 0
                 else:
                     output('Following %d packages need to be installed:', '1;32', pkg_need_install)
                     return 0
